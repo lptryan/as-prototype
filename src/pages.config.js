@@ -53,6 +53,13 @@ import Campaigns from './pages/Campaigns';
 import DesignStudio from './pages/DesignStudio';
 import Orders from './pages/Orders';
 import Credits from './pages/Credits';
+import AdminDashboard from './pages/AdminDashboard';
+import AdminUsers from './pages/AdminUsers';
+import AdminOrders from './pages/AdminOrders';
+import AdminBranding from './pages/AdminBranding';
+import AdminSettings from './pages/AdminSettings';
+import AdminEmailStudio from './pages/AdminEmailStudio';
+import AdminAnalytics from './pages/AdminAnalytics';
 import __Layout from './Layout.jsx';
 
 
@@ -63,6 +70,13 @@ export const PAGES = {
     "DesignStudio": DesignStudio,
     "Orders": Orders,
     "Credits": Credits,
+    "AdminDashboard": AdminDashboard,
+    "AdminUsers": AdminUsers,
+    "AdminOrders": AdminOrders,
+    "AdminBranding": AdminBranding,
+    "AdminSettings": AdminSettings,
+    "AdminEmailStudio": AdminEmailStudio,
+    "AdminAnalytics": AdminAnalytics,
 }
 
 export const pagesConfig = {
