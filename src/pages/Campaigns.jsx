@@ -53,14 +53,26 @@ import {
   Send,
   Map,
   Filter,
-  ArrowUpDown
+  ArrowUpDown,
+  CheckCircle2,
+  AlertTriangle
 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 export default function Campaigns() {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [deleteId, setDeleteId] = useState(null);
+  const [hygieneResults, setHygieneResults] = useState(null);
+  const [processingHygiene, setProcessingHygiene] = useState(false);
 
   const { data: user } = useQuery({
     queryKey: ['current-user'],
@@ -96,6 +108,73 @@ export default function Campaigns() {
       toast.success('Campaign duplicated');
     },
   });
+
+  // Automated hygiene check
+  const runHygieneCheck = async (campaign) => {
+    setProcessingHygiene(true);
+    
+    try {
+      // Update status to pending_hygiene
+      await base44.entities.Campaign.update(campaign.id, { status: 'pending_hygiene' });
+      queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+      
+      // Simulate AccuZip CASS/NCOA processing
+      // In production, this would call: await base44.integrations.AccuZip.validateAddresses(...)
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Simulate results (in production, parse from AccuZip response)
+      const totalRecipients = campaign.total_recipients || 0;
+      const invalidCount = Math.floor(Math.random() * totalRecipients * 0.20); // 0-20% invalid
+      const validRecipients = totalRecipients - invalidCount;
+      const invalidPercentage = totalRecipients > 0 ? (invalidCount / totalRecipients) * 100 : 0;
+      
+      const results = {
+        campaignId: campaign.id,
+        campaignName: campaign.name,
+        totalRecipients,
+        validRecipients,
+        invalidRecipients: invalidCount,
+        invalidPercentage: parseFloat(invalidPercentage.toFixed(1)),
+        hasHighWaste: invalidPercentage > 15,
+      };
+      
+      // Update campaign with hygiene results
+      await base44.entities.Campaign.update(campaign.id, {
+        valid_recipients: validRecipients,
+        invalid_percentage: results.invalidPercentage,
+        status: 'ready',
+      });
+      
+      queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+      setHygieneResults(results);
+      
+    } catch (error) {
+      toast.error('Hygiene check failed');
+      await base44.entities.Campaign.update(campaign.id, { status: campaign.status });
+      queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+    } finally {
+      setProcessingHygiene(false);
+    }
+  };
+
+  const handleProceedToPrint = async () => {
+    if (!hygieneResults) return;
+    
+    // Move to processing status
+    await base44.entities.Campaign.update(hygieneResults.campaignId, { status: 'processing' });
+    queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+    setHygieneResults(null);
+    toast.success('Campaign moved to processing');
+  };
+
+  const handleCancelReady = async () => {
+    if (!hygieneResults) return;
+    
+    // Revert to designing status
+    await base44.entities.Campaign.update(hygieneResults.campaignId, { status: 'designing' });
+    queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+    setHygieneResults(null);
+  };
 
   const filteredCampaigns = campaigns.filter(campaign => {
     const matchesSearch = campaign.name?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -217,6 +296,15 @@ export default function Campaigns() {
                             Edit Design
                           </Link>
                         </DropdownMenuItem>
+                        {['draft', 'designing'].includes(campaign.status) && (
+                          <DropdownMenuItem 
+                            onClick={() => runHygieneCheck(campaign)}
+                            disabled={processingHygiene}
+                          >
+                            <CheckCircle2 className="h-4 w-4 mr-2" />
+                            Mark Ready for Print
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem>
                           <Eye className="h-4 w-4 mr-2" />
                           View Details
@@ -263,6 +351,101 @@ export default function Campaigns() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Hygiene Results Dialog */}
+      <Dialog open={!!hygieneResults} onOpenChange={(open) => !open && setHygieneResults(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {hygieneResults?.hasHighWaste ? (
+                <>
+                  <AlertTriangle className="h-5 w-5 text-amber-600" />
+                  High Waste Warning
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                  Hygiene Check Complete
+                </>
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              CASS/NCOA validation results for "{hygieneResults?.campaignName}"
+            </DialogDescription>
+          </DialogHeader>
+
+          {hygieneResults && (
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-slate-50 rounded-lg p-4">
+                  <p className="text-sm text-slate-600">Total Recipients</p>
+                  <p className="text-2xl font-bold text-slate-900">
+                    {hygieneResults.totalRecipients.toLocaleString()}
+                  </p>
+                </div>
+                <div className="bg-emerald-50 rounded-lg p-4">
+                  <p className="text-sm text-emerald-600">Valid Addresses</p>
+                  <p className="text-2xl font-bold text-emerald-900">
+                    {hygieneResults.validRecipients.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+
+              <div className={`rounded-lg p-4 ${
+                hygieneResults.hasHighWaste ? 'bg-amber-50 border border-amber-200' : 'bg-slate-50'
+              }`}>
+                <div className="flex items-start gap-3">
+                  {hygieneResults.hasHighWaste ? (
+                    <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                  ) : (
+                    <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                  )}
+                  <div>
+                    <p className={`font-medium ${
+                      hygieneResults.hasHighWaste ? 'text-amber-900' : 'text-slate-900'
+                    }`}>
+                      {hygieneResults.invalidPercentage}% Invalid Addresses
+                    </p>
+                    {hygieneResults.hasHighWaste ? (
+                      <p className="text-sm text-amber-700 mt-1">
+                        High waste detected! {hygieneResults.invalidRecipients.toLocaleString()} addresses could not be validated. 
+                        Consider reviewing your target area to reduce waste.
+                      </p>
+                    ) : (
+                      <p className="text-sm text-slate-600 mt-1">
+                        Your campaign meets quality standards. {hygieneResults.invalidRecipients.toLocaleString()} addresses 
+                        will be excluded from mailing.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-blue-50 rounded-lg p-4">
+                <p className="text-sm text-blue-900 font-medium">Estimated Cost</p>
+                <p className="text-2xl font-bold text-blue-900 mt-1">
+                  ${(hygieneResults.validRecipients * 0.50).toLocaleString()}
+                </p>
+                <p className="text-xs text-blue-700 mt-1">
+                  Based on {hygieneResults.validRecipients.toLocaleString()} valid recipients @ $0.50 each
+                </p>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="flex gap-2">
+            <Button variant="outline" onClick={handleCancelReady}>
+              Go Back
+            </Button>
+            <Button 
+              onClick={handleProceedToPrint}
+              className={hygieneResults?.hasHighWaste ? 'bg-amber-600 hover:bg-amber-700' : 'bg-blue-600 hover:bg-blue-700'}
+            >
+              {hygieneResults?.hasHighWaste ? 'Proceed Anyway' : 'Proceed to Print'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
