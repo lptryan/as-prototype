@@ -15,6 +15,7 @@ export const postcardTemplates = [
           width: 600,
           height: 400,
           fill: '#0F172A',
+          borderRadius: 0,
           locked: true,
         },
         {
@@ -25,6 +26,7 @@ export const postcardTemplates = [
           width: 600,
           height: 60,
           fill: '#3B82F6',
+          borderRadius: 0,
           locked: false,
         },
         {
@@ -93,6 +95,7 @@ export const postcardTemplates = [
           width: 900,
           height: 600,
           fill: '#F8FAFC',
+          borderRadius: 0,
           locked: true,
         },
         {
@@ -103,6 +106,7 @@ export const postcardTemplates = [
           width: 900,
           height: 120,
           fill: '#10B981',
+          borderRadius: 0,
           locked: false,
         },
         {
@@ -182,6 +186,7 @@ export const postcardTemplates = [
           width: 600,
           height: 400,
           fill: '#FFFFFF',
+          borderRadius: 0,
           locked: true,
         },
         {
@@ -192,6 +197,7 @@ export const postcardTemplates = [
           width: 600,
           height: 8,
           fill: '#10B981',
+          borderRadius: 0,
           locked: false,
         },
         {
@@ -283,6 +289,7 @@ export const postcardTemplates = [
           width: 600,
           height: 400,
           fill: '#FFFFFF',
+          borderRadius: 0,
           locked: true,
         },
       ],
@@ -304,6 +311,7 @@ export const postcardTemplates = [
           width: 900,
           height: 600,
           fill: '#FEF3C7',
+          borderRadius: 0,
           locked: true,
         },
         {
@@ -348,6 +356,7 @@ export const postcardTemplates = [
           width: 300,
           height: 80,
           fill: '#FFFFFF',
+          borderRadius: 8,
           locked: false,
         },
         {
@@ -392,6 +401,7 @@ export const postcardTemplates = [
           width: 1100,
           height: 600,
           fill: '#000000',
+          borderRadius: 0,
           locked: true,
         },
         {
@@ -402,6 +412,7 @@ export const postcardTemplates = [
           width: 1100,
           height: 4,
           fill: '#D4AF37',
+          borderRadius: 0,
           locked: false,
         },
         {
@@ -412,6 +423,7 @@ export const postcardTemplates = [
           width: 1100,
           height: 4,
           fill: '#D4AF37',
+          borderRadius: 0,
           locked: false,
         },
         {

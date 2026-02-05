@@ -492,22 +492,49 @@ Return as JSON array with format: { "headlines": ["headline1", "headline2", "hea
               <div
                 key={element.id}
                 className={cn(
-                  "absolute cursor-move",
+                  "absolute cursor-move select-none",
                   selectedElement === element.id && "ring-2 ring-blue-500"
                 )}
                 style={{
-                  left: element.x * (zoom / 100),
-                  top: element.y * (zoom / 100),
-                  width: element.width * (zoom / 100),
-                  height: element.height * (zoom / 100),
+                  left: element.x,
+                  top: element.y,
+                  width: element.width,
+                  height: element.height,
                 }}
-                onClick={() => setSelectedElement(element.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedElement(element.id);
+                }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  const startX = e.clientX;
+                  const startY = e.clientY;
+                  const startLeft = element.x;
+                  const startTop = element.y;
+                  
+                  const handleMouseMove = (e) => {
+                    const deltaX = (e.clientX - startX) / (zoom / 100);
+                    const deltaY = (e.clientY - startY) / (zoom / 100);
+                    updateElement(element.id, {
+                      x: Math.max(0, Math.min(canvasSize.width - element.width, startLeft + deltaX)),
+                      y: Math.max(0, Math.min(canvasSize.height - element.height, startTop + deltaY)),
+                    });
+                  };
+                  
+                  const handleMouseUp = () => {
+                    document.removeEventListener('mousemove', handleMouseMove);
+                    document.removeEventListener('mouseup', handleMouseUp);
+                  };
+                  
+                  document.addEventListener('mousemove', handleMouseMove);
+                  document.addEventListener('mouseup', handleMouseUp);
+                }}
               >
                 {element.type === 'text' && (
                   <div
-                    className="w-full h-full flex items-center"
+                    className="w-full h-full flex items-center pointer-events-none"
                     style={{
-                      fontSize: element.fontSize * (zoom / 100),
+                      fontSize: element.fontSize,
                       fontFamily: element.fontFamily,
                       fontWeight: element.fontWeight,
                       fontStyle: element.fontStyle,
@@ -520,31 +547,31 @@ Return as JSON array with format: { "headlines": ["headline1", "headline2", "hea
                 )}
                 {element.type === 'merge_tag' && (
                   <div
-                    className="w-full h-full flex items-center px-2 bg-purple-100 rounded border-2 border-dashed border-purple-400"
+                    className="w-full h-full flex items-center px-2 bg-purple-100 rounded border-2 border-dashed border-purple-400 pointer-events-none"
                     style={{
-                      fontSize: element.fontSize * (zoom / 100),
+                      fontSize: element.fontSize,
                       fontFamily: element.fontFamily,
                       fontWeight: element.fontWeight,
                       color: element.color,
                     }}
                   >
-                    <Tag className="h-3 w-3 mr-1" style={{ zoom: zoom / 100 }} />
+                    <Tag className="h-3 w-3 mr-1" />
                     {element.tag}
                   </div>
                 )}
                 {element.type === 'rectangle' && (
                   <div
-                    className="w-full h-full"
+                    className="w-full h-full pointer-events-none"
                     style={{
                       backgroundColor: element.fill,
-                      borderRadius: element.borderRadius * (zoom / 100),
+                      borderRadius: element.borderRadius || 0,
                       border: element.stroke ? `${element.strokeWidth}px solid ${element.stroke}` : 'none',
                     }}
                   />
                 )}
                 {element.type === 'circle' && (
                   <div
-                    className="w-full h-full rounded-full"
+                    className="w-full h-full rounded-full pointer-events-none"
                     style={{
                       backgroundColor: element.fill,
                       border: element.stroke ? `${element.strokeWidth}px solid ${element.stroke}` : 'none',
