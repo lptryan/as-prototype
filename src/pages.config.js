@@ -47,36 +47,36 @@
  *
  * The mainPage value must match a key in the PAGES object exactly.
  */
-import Dashboard from './pages/Dashboard';
-import FarmMap from './pages/FarmMap';
-import Campaigns from './pages/Campaigns';
-import DesignStudio from './pages/DesignStudio';
-import Orders from './pages/Orders';
-import Credits from './pages/Credits';
-import AdminDashboard from './pages/AdminDashboard';
-import AdminUsers from './pages/AdminUsers';
-import AdminOrders from './pages/AdminOrders';
-import AdminBranding from './pages/AdminBranding';
-import AdminSettings from './pages/AdminSettings';
-import AdminEmailStudio from './pages/AdminEmailStudio';
 import AdminAnalytics from './pages/AdminAnalytics';
+import AdminBranding from './pages/AdminBranding';
+import AdminDashboard from './pages/AdminDashboard';
+import AdminEmailStudio from './pages/AdminEmailStudio';
+import AdminOrders from './pages/AdminOrders';
+import AdminSettings from './pages/AdminSettings';
+import AdminUsers from './pages/AdminUsers';
+import Campaigns from './pages/Campaigns';
+import Credits from './pages/Credits';
+import Dashboard from './pages/Dashboard';
+import DesignStudio from './pages/DesignStudio';
+import FarmMap from './pages/FarmMap';
+import Orders from './pages/Orders';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
-    "Dashboard": Dashboard,
-    "FarmMap": FarmMap,
-    "Campaigns": Campaigns,
-    "DesignStudio": DesignStudio,
-    "Orders": Orders,
-    "Credits": Credits,
-    "AdminDashboard": AdminDashboard,
-    "AdminUsers": AdminUsers,
-    "AdminOrders": AdminOrders,
-    "AdminBranding": AdminBranding,
-    "AdminSettings": AdminSettings,
-    "AdminEmailStudio": AdminEmailStudio,
     "AdminAnalytics": AdminAnalytics,
+    "AdminBranding": AdminBranding,
+    "AdminDashboard": AdminDashboard,
+    "AdminEmailStudio": AdminEmailStudio,
+    "AdminOrders": AdminOrders,
+    "AdminSettings": AdminSettings,
+    "AdminUsers": AdminUsers,
+    "Campaigns": Campaigns,
+    "Credits": Credits,
+    "Dashboard": Dashboard,
+    "DesignStudio": DesignStudio,
+    "FarmMap": FarmMap,
+    "Orders": Orders,
 }
 
 export const pagesConfig = {

@@ -93,6 +93,7 @@ export default function DesignStudio() {
   const [magicWriteResults, setMagicWriteResults] = useState([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
 
   const { data: campaign, isLoading: campaignLoading } = useQuery({
     queryKey: ['campaign', campaignId],
@@ -106,8 +107,22 @@ export default function DesignStudio() {
     if (campaign?.design_data?.elements) {
       setElements(campaign.design_data.elements);
       setPostcardSize(campaign.postcard_size || '4x6');
+    } else if (!campaignId && elements.length === 0) {
+      // Show templates for new campaigns
+      setShowTemplates(true);
     }
-  }, [campaign]);
+  }, [campaign, campaignId, elements.length]);
+
+  const handleSelectTemplate = (template) => {
+    setElements(template.design_data.elements || []);
+    setPostcardSize(template.size);
+    setShowTemplates(false);
+    toast.success(`Template "${template.name}" loaded`);
+  };
+
+  const handleStartBlank = () => {
+    setShowTemplates(false);
+  };
 
   const addElement = (type) => {
     const canvasSize = CANVAS_SIZES[postcardSize];
@@ -304,6 +319,27 @@ Return as JSON array with format: { "headlines": ["headline1", "headline2", "hea
 
   return (
     <div className="h-screen flex flex-col bg-slate-100">
+      {/* Template Dialog */}
+      <Dialog open={showTemplates} onOpenChange={setShowTemplates}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Choose a Template</DialogTitle>
+            <DialogDescription>
+              Start with a professional design or blank canvas
+            </DialogDescription>
+          </DialogHeader>
+          <TemplateSelector 
+            onSelectTemplate={handleSelectTemplate}
+            selectedSize={postcardSize}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={handleStartBlank}>
+              Start with Blank Canvas
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Top Toolbar */}
       <div className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-4">
         <div className="flex items-center gap-4">
@@ -324,6 +360,14 @@ Return as JSON array with format: { "headlines": ["headline1", "headline2", "hea
               ))}
             </SelectContent>
           </Select>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setShowTemplates(true)}
+          >
+            <Sparkles className="h-4 w-4 mr-2" />
+            Templates
+          </Button>
         </div>
 
         <div className="flex items-center gap-2">
