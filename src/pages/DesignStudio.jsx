@@ -58,6 +58,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import TemplateSelector from '@/components/design/TemplateSelector';
+import LayersPanel from '@/components/design/LayersPanel';
 
 // Canvas dimensions for different postcard sizes
 const CANVAS_SIZES = {
@@ -95,6 +96,7 @@ export default function DesignStudio() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [customFonts, setCustomFonts] = useState([]);
 
   const { data: campaign, isLoading: campaignLoading } = useQuery({
     queryKey: ['campaign', campaignId],
@@ -134,6 +136,9 @@ export default function DesignStudio() {
       y: canvasSize.height / 2 - 25,
       width: type === 'text' ? 200 : 100,
       height: type === 'text' ? 40 : 100,
+      opacity: 1,
+      hidden: false,
+      locked: false,
       ...(type === 'text' && {
         content: 'Double-click to edit',
         fontSize: 24,
@@ -145,18 +150,30 @@ export default function DesignStudio() {
       }),
       ...(type === 'rectangle' && {
         fill: '#3B82F6',
+        fillType: 'solid',
+        gradientStart: '#3B82F6',
+        gradientEnd: '#1E40AF',
+        gradientDirection: 'to bottom',
         stroke: '',
         strokeWidth: 0,
         borderRadius: 8,
       }),
       ...(type === 'circle' && {
         fill: '#10B981',
+        fillType: 'solid',
+        gradientStart: '#10B981',
+        gradientEnd: '#059669',
+        gradientDirection: 'to bottom',
         stroke: '',
         strokeWidth: 0,
       }),
       ...(type === 'image' && {
         src: '',
         objectFit: 'cover',
+        brightness: 100,
+        contrast: 100,
+        saturate: 100,
+        blur: 0,
       }),
     };
     
@@ -205,6 +222,34 @@ export default function DesignStudio() {
       };
       setElements([...elements, newElement]);
       setSelectedElement(newElement.id);
+    }
+  };
+
+  const toggleVisibility = (id) => {
+    setElements(elements.map(el => el.id === id ? { ...el, hidden: !el.hidden } : el));
+  };
+
+  const toggleLock = (id) => {
+    setElements(elements.map(el => el.id === id ? { ...el, locked: !el.locked } : el));
+  };
+
+  const handleUploadFont = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const fontName = file.name.replace(/\.[^/.]+$/, "");
+      
+      // Create @font-face rule
+      const fontFace = new FontFace(fontName, `url(${file_url})`);
+      await fontFace.load();
+      document.fonts.add(fontFace);
+      
+      setCustomFonts([...customFonts, fontName]);
+      toast.success(`Font "${fontName}" uploaded`);
+    } catch (error) {
+      toast.error('Failed to upload font');
     }
   };
 
@@ -488,48 +533,55 @@ Return as JSON array with format: { "headlines": ["headline1", "headline2", "hea
             )}
 
             {/* Elements */}
-            {elements.map((element) => (
-              <div
-                key={element.id}
-                className={cn(
-                  "absolute cursor-move select-none",
-                  selectedElement === element.id && "ring-2 ring-blue-500"
-                )}
-                style={{
-                  left: element.x,
-                  top: element.y,
-                  width: element.width,
-                  height: element.height,
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedElement(element.id);
-                }}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  const startX = e.clientX;
-                  const startY = e.clientY;
-                  const startLeft = element.x;
-                  const startTop = element.y;
-                  
-                  const handleMouseMove = (e) => {
-                    const deltaX = (e.clientX - startX) / (zoom / 100);
-                    const deltaY = (e.clientY - startY) / (zoom / 100);
-                    updateElement(element.id, {
-                      x: Math.max(0, Math.min(canvasSize.width - element.width, startLeft + deltaX)),
-                      y: Math.max(0, Math.min(canvasSize.height - element.height, startTop + deltaY)),
-                    });
-                  };
-                  
-                  const handleMouseUp = () => {
-                    document.removeEventListener('mousemove', handleMouseMove);
-                    document.removeEventListener('mouseup', handleMouseUp);
-                  };
-                  
-                  document.addEventListener('mousemove', handleMouseMove);
-                  document.addEventListener('mouseup', handleMouseUp);
-                }}
-              >
+            {elements.map((element) => {
+              if (element.hidden) return null;
+              
+              return (
+                <div
+                  key={element.id}
+                  className={cn(
+                    "absolute select-none",
+                    !element.locked && "cursor-move",
+                    selectedElement === element.id && "ring-2 ring-blue-500"
+                  )}
+                  style={{
+                    left: element.x,
+                    top: element.y,
+                    width: element.width,
+                    height: element.height,
+                    opacity: element.opacity,
+                    zIndex: elements.indexOf(element),
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedElement(element.id);
+                  }}
+                  onMouseDown={(e) => {
+                    if (element.locked) return;
+                    e.preventDefault();
+                    const startX = e.clientX;
+                    const startY = e.clientY;
+                    const startLeft = element.x;
+                    const startTop = element.y;
+                    
+                    const handleMouseMove = (e) => {
+                      const deltaX = (e.clientX - startX) / (zoom / 100);
+                      const deltaY = (e.clientY - startY) / (zoom / 100);
+                      updateElement(element.id, {
+                        x: Math.max(0, Math.min(canvasSize.width - element.width, startLeft + deltaX)),
+                        y: Math.max(0, Math.min(canvasSize.height - element.height, startTop + deltaY)),
+                      });
+                    };
+                    
+                    const handleMouseUp = () => {
+                      document.removeEventListener('mousemove', handleMouseMove);
+                      document.removeEventListener('mouseup', handleMouseUp);
+                    };
+                    
+                    document.addEventListener('mousemove', handleMouseMove);
+                    document.addEventListener('mouseup', handleMouseUp);
+                  }}
+                >
                 {element.type === 'text' && (
                   <div
                     className="w-full h-full flex items-center pointer-events-none"
@@ -563,7 +615,9 @@ Return as JSON array with format: { "headlines": ["headline1", "headline2", "hea
                   <div
                     className="w-full h-full pointer-events-none"
                     style={{
-                      backgroundColor: element.fill,
+                      background: element.fillType === 'gradient' 
+                        ? `linear-gradient(${element.gradientDirection}, ${element.gradientStart}, ${element.gradientEnd})`
+                        : element.fill,
                       borderRadius: element.borderRadius || 0,
                       border: element.stroke ? `${element.strokeWidth}px solid ${element.stroke}` : 'none',
                     }}
@@ -573,7 +627,9 @@ Return as JSON array with format: { "headlines": ["headline1", "headline2", "hea
                   <div
                     className="w-full h-full rounded-full pointer-events-none"
                     style={{
-                      backgroundColor: element.fill,
+                      background: element.fillType === 'gradient' 
+                        ? `linear-gradient(${element.gradientDirection}, ${element.gradientStart}, ${element.gradientEnd})`
+                        : element.fill,
                       border: element.stroke ? `${element.strokeWidth}px solid ${element.stroke}` : 'none',
                     }}
                   />
@@ -583,17 +639,21 @@ Return as JSON array with format: { "headlines": ["headline1", "headline2", "hea
                     <img
                       src={element.src}
                       alt=""
-                      className="w-full h-full"
-                      style={{ objectFit: element.objectFit }}
+                      className="w-full h-full pointer-events-none"
+                      style={{ 
+                        objectFit: element.objectFit,
+                        filter: `brightness(${element.brightness || 100}%) contrast(${element.contrast || 100}%) saturate(${element.saturate || 100}%) blur(${element.blur || 0}px)`
+                      }}
                     />
                   ) : (
-                    <div className="w-full h-full bg-slate-100 border-2 border-dashed border-slate-300 flex items-center justify-center">
+                    <div className="w-full h-full bg-slate-100 border-2 border-dashed border-slate-300 flex items-center justify-center pointer-events-none">
                       <Upload className="h-6 w-6 text-slate-400" />
                     </div>
                   )
                 )}
               </div>
-            ))}
+            );
+            })}
 
             {/* Empty state */}
             {elements.length === 0 && (
@@ -612,9 +672,10 @@ Return as JSON array with format: { "headlines": ["headline1", "headline2", "hea
         {/* Right Sidebar - Properties */}
         <div className="w-72 bg-white border-l border-slate-200 overflow-y-auto">
           <Tabs defaultValue="properties" className="w-full">
-            <TabsList className="w-full grid grid-cols-2">
+            <TabsList className="w-full grid grid-cols-3">
               <TabsTrigger value="properties">Properties</TabsTrigger>
               <TabsTrigger value="personalize">Personalize</TabsTrigger>
+              <TabsTrigger value="layers">Layers</TabsTrigger>
             </TabsList>
 
             <TabsContent value="properties" className="p-4 space-y-4">
@@ -634,38 +695,51 @@ Return as JSON array with format: { "headlines": ["headline1", "headline2", "hea
 
                   {/* Position */}
                   <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-xs">X Position</Label>
-                      <Input
-                        type="number"
-                        value={selectedEl.x}
-                        onChange={(e) => updateElement(selectedEl.id, { x: parseInt(e.target.value) })}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Y Position</Label>
-                      <Input
-                        type="number"
-                        value={selectedEl.y}
-                        onChange={(e) => updateElement(selectedEl.id, { y: parseInt(e.target.value) })}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Width</Label>
-                      <Input
-                        type="number"
-                        value={selectedEl.width}
-                        onChange={(e) => updateElement(selectedEl.id, { width: parseInt(e.target.value) })}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Height</Label>
-                      <Input
-                        type="number"
-                        value={selectedEl.height}
-                        onChange={(e) => updateElement(selectedEl.id, { height: parseInt(e.target.value) })}
-                      />
-                    </div>
+                   <div>
+                     <Label className="text-xs">X Position</Label>
+                     <Input
+                       type="number"
+                       value={selectedEl.x}
+                       onChange={(e) => updateElement(selectedEl.id, { x: parseInt(e.target.value) })}
+                     />
+                   </div>
+                   <div>
+                     <Label className="text-xs">Y Position</Label>
+                     <Input
+                       type="number"
+                       value={selectedEl.y}
+                       onChange={(e) => updateElement(selectedEl.id, { y: parseInt(e.target.value) })}
+                     />
+                   </div>
+                   <div>
+                     <Label className="text-xs">Width</Label>
+                     <Input
+                       type="number"
+                       value={selectedEl.width}
+                       onChange={(e) => updateElement(selectedEl.id, { width: parseInt(e.target.value) })}
+                     />
+                   </div>
+                   <div>
+                     <Label className="text-xs">Height</Label>
+                     <Input
+                       type="number"
+                       value={selectedEl.height}
+                       onChange={(e) => updateElement(selectedEl.id, { height: parseInt(e.target.value) })}
+                     />
+                   </div>
+                  </div>
+
+                  {/* Opacity */}
+                  <div>
+                   <Label className="text-xs">Opacity</Label>
+                   <Slider
+                     value={[selectedEl.opacity * 100]}
+                     onValueChange={([val]) => updateElement(selectedEl.id, { opacity: val / 100 })}
+                     min={0}
+                     max={100}
+                     step={1}
+                   />
+                   <span className="text-xs text-slate-500">{Math.round(selectedEl.opacity * 100)}%</span>
                   </div>
 
                   {/* Text properties */}
@@ -681,6 +755,37 @@ Return as JSON array with format: { "headlines": ["headline1", "headline2", "hea
                           />
                         </div>
                       )}
+                      <div>
+                        <Label className="text-xs">Font Family</Label>
+                        <Select value={selectedEl.fontFamily} onValueChange={(val) => updateElement(selectedEl.id, { fontFamily: val })}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Inter">Inter</SelectItem>
+                            <SelectItem value="Arial">Arial</SelectItem>
+                            <SelectItem value="Georgia">Georgia</SelectItem>
+                            <SelectItem value="Times New Roman">Times New Roman</SelectItem>
+                            <SelectItem value="Courier New">Courier New</SelectItem>
+                            {customFonts.map(font => (
+                              <SelectItem key={font} value={font}>{font}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <div className="mt-2">
+                          <input
+                            type="file"
+                            accept=".ttf,.otf,.woff,.woff2"
+                            onChange={handleUploadFont}
+                            className="hidden"
+                            id="font-upload"
+                          />
+                          <Button variant="outline" size="sm" className="w-full" onClick={() => document.getElementById('font-upload').click()}>
+                            <Upload className="h-3 w-3 mr-2" />
+                            Upload Custom Font
+                          </Button>
+                        </div>
+                      </div>
                       <div>
                         <Label className="text-xs">Font Size</Label>
                         <Slider
@@ -751,14 +856,67 @@ Return as JSON array with format: { "headlines": ["headline1", "headline2", "hea
                   {(selectedEl.type === 'rectangle' || selectedEl.type === 'circle') && (
                     <>
                       <div>
-                        <Label className="text-xs">Fill Color</Label>
-                        <Input
-                          type="color"
-                          value={selectedEl.fill}
-                          onChange={(e) => updateElement(selectedEl.id, { fill: e.target.value })}
-                          className="h-10 p-1"
-                        />
+                        <Label className="text-xs">Fill Type</Label>
+                        <Select value={selectedEl.fillType || 'solid'} onValueChange={(val) => updateElement(selectedEl.id, { fillType: val })}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="solid">Solid Color</SelectItem>
+                            <SelectItem value="gradient">Gradient</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
+
+                      {selectedEl.fillType === 'gradient' ? (
+                        <>
+                          <div>
+                            <Label className="text-xs">Gradient Start</Label>
+                            <Input
+                              type="color"
+                              value={selectedEl.gradientStart || selectedEl.fill}
+                              onChange={(e) => updateElement(selectedEl.id, { gradientStart: e.target.value })}
+                              className="h-10 p-1"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Gradient End</Label>
+                            <Input
+                              type="color"
+                              value={selectedEl.gradientEnd || selectedEl.fill}
+                              onChange={(e) => updateElement(selectedEl.id, { gradientEnd: e.target.value })}
+                              className="h-10 p-1"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Direction</Label>
+                            <Select value={selectedEl.gradientDirection || 'to bottom'} onValueChange={(val) => updateElement(selectedEl.id, { gradientDirection: val })}>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="to bottom">Top to Bottom</SelectItem>
+                                <SelectItem value="to top">Bottom to Top</SelectItem>
+                                <SelectItem value="to right">Left to Right</SelectItem>
+                                <SelectItem value="to left">Right to Left</SelectItem>
+                                <SelectItem value="to bottom right">Diagonal ↘</SelectItem>
+                                <SelectItem value="to bottom left">Diagonal ↙</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </>
+                      ) : (
+                        <div>
+                          <Label className="text-xs">Fill Color</Label>
+                          <Input
+                            type="color"
+                            value={selectedEl.fill}
+                            onChange={(e) => updateElement(selectedEl.id, { fill: e.target.value })}
+                            className="h-10 p-1"
+                          />
+                        </div>
+                      )}
+
                       {selectedEl.type === 'rectangle' && (
                         <div>
                           <Label className="text-xs">Border Radius</Label>
@@ -776,18 +934,72 @@ Return as JSON array with format: { "headlines": ["headline1", "headline2", "hea
 
                   {/* Image properties */}
                   {selectedEl.type === 'image' && (
-                    <div>
-                      <Label className="text-xs">Image URL</Label>
-                      <Input
-                        value={selectedEl.src}
-                        onChange={(e) => updateElement(selectedEl.id, { src: e.target.value })}
-                        placeholder="Paste image URL or upload"
-                      />
-                      <Button variant="outline" className="w-full mt-2" size="sm">
-                        <Upload className="h-4 w-4 mr-2" />
-                        Upload Image
-                      </Button>
-                    </div>
+                    <>
+                      <div>
+                        <Label className="text-xs">Image URL</Label>
+                        <Input
+                          value={selectedEl.src}
+                          onChange={(e) => updateElement(selectedEl.id, { src: e.target.value })}
+                          placeholder="Paste image URL or upload"
+                        />
+                        <Button variant="outline" className="w-full mt-2" size="sm">
+                          <Upload className="h-4 w-4 mr-2" />
+                          Upload Image
+                        </Button>
+                      </div>
+
+                      {selectedEl.src && (
+                        <>
+                          <div>
+                            <Label className="text-xs">Brightness</Label>
+                            <Slider
+                              value={[selectedEl.brightness || 100]}
+                              onValueChange={([val]) => updateElement(selectedEl.id, { brightness: val })}
+                              min={0}
+                              max={200}
+                              step={1}
+                            />
+                            <span className="text-xs text-slate-500">{selectedEl.brightness || 100}%</span>
+                          </div>
+
+                          <div>
+                            <Label className="text-xs">Contrast</Label>
+                            <Slider
+                              value={[selectedEl.contrast || 100]}
+                              onValueChange={([val]) => updateElement(selectedEl.id, { contrast: val })}
+                              min={0}
+                              max={200}
+                              step={1}
+                            />
+                            <span className="text-xs text-slate-500">{selectedEl.contrast || 100}%</span>
+                          </div>
+
+                          <div>
+                            <Label className="text-xs">Saturation</Label>
+                            <Slider
+                              value={[selectedEl.saturate || 100]}
+                              onValueChange={([val]) => updateElement(selectedEl.id, { saturate: val })}
+                              min={0}
+                              max={200}
+                              step={1}
+                            />
+                            <span className="text-xs text-slate-500">{selectedEl.saturate || 100}%</span>
+                          </div>
+
+                          <div>
+                            <Label className="text-xs">Blur</Label>
+                            <Slider
+                              value={[selectedEl.blur || 0]}
+                              onValueChange={([val]) => updateElement(selectedEl.id, { blur: val })}
+                              min={0}
+                              max={20}
+                              step={1}
+                            />
+                            <span className="text-xs text-slate-500">{selectedEl.blur || 0}px</span>
+                          </div>
+                        </>
+                      )}
+                    </>
                   )}
                 </>
               ) : (
@@ -816,6 +1028,17 @@ Return as JSON array with format: { "headlines": ["headline1", "headline2", "hea
                   </Button>
                 ))}
               </div>
+            </TabsContent>
+
+            <TabsContent value="layers" className="p-0 h-[calc(100vh-8rem)]">
+              <LayersPanel
+                elements={elements}
+                selectedElement={selectedElement}
+                onReorder={setElements}
+                onSelect={setSelectedElement}
+                onToggleVisibility={toggleVisibility}
+                onToggleLock={toggleLock}
+              />
             </TabsContent>
           </Tabs>
         </div>
