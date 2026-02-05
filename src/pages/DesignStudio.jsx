@@ -57,6 +57,7 @@ import {
   Grid3X3
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import TemplateSelector from '@/components/design/TemplateSelector';
 
 // Canvas dimensions for different postcard sizes
 const CANVAS_SIZES = {
