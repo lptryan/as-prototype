@@ -31,7 +31,14 @@ export default function Layout({ children, currentPageName }) {
   
   const { data: user, isLoading, error } = useQuery({
     queryKey: ['current-user'],
-    queryFn: () => base44.auth.me(),
+    queryFn: async () => {
+      try {
+        return await base44.auth.me();
+      } catch (err) {
+        // If auth fails (e.g., app is public), return null
+        return null;
+      }
+    },
     retry: false,
   });
 
@@ -49,17 +56,7 @@ export default function Layout({ children, currentPageName }) {
     );
   }
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <p className="text-lg font-semibold text-slate-900">Unable to load user data</p>
-          <p className="text-sm text-slate-500">Please try refreshing the page</p>
-          <Button onClick={() => window.location.reload()}>Reload</Button>
-        </div>
-      </div>
-    );
-  }
+
 
   return (
     <BrandingProvider>
