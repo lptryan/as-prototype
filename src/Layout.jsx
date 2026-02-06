@@ -29,9 +29,10 @@ const fullWidthPages = ['DesignStudio'];
 export default function Layout({ children, currentPageName }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   
-  const { data: user, isLoading } = useQuery({
+  const { data: user, isLoading, error } = useQuery({
     queryKey: ['current-user'],
     queryFn: () => base44.auth.me(),
+    retry: false,
   });
 
   const pageInfo = pageTitles[currentPageName] || { title: currentPageName, subtitle: '' };
@@ -43,6 +44,18 @@ export default function Layout({ children, currentPageName }) {
         <div className="text-center space-y-4">
           <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto" />
           <p className="text-sm text-slate-500">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <p className="text-lg font-semibold text-slate-900">Unable to load user data</p>
+          <p className="text-sm text-slate-500">Please try refreshing the page</p>
+          <Button onClick={() => window.location.reload()}>Reload</Button>
         </div>
       </div>
     );
